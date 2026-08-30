@@ -1,0 +1,219 @@
+# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
+
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: CI Microservicios
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+permissions:
+  contents: read
+  security-events: write
+  id-token: write
+  packages: write
+jobs:
+  build-test-run:
+
+    runs-on: ubuntu-latest
+    services:
+      producto-db:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ${{ secrets.DB_USERNAME }}
+          POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          POSTGRES_DB: productodb
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd="pg_isready -U $$POSTGRES_USER"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+    - name: Checkout del código
+      uses: actions/checkout@v4
+    - name: Set up JDK 25
+      uses: actions/setup-java@v5.7.0
+      with:
+        java-version: '25'
+        distribution: 'temurin'
+        cache: maven
+    # ------------------------------
+    # Seguridad sobre el código (SAST + Dependency)
+    # ------------------------------
+    - name: Instalando Snyk CLI
+      run: npm install -g snyk
+    - name: Escaneo de dependencias Snyk
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      run: snyk test --all-projects --severity-threshold=high || true #medium
+    - name: Build con Maven sin Tests
+      run: mvn -B -pl producto-service,orden-service -am clean package -DskipTests
+    - name: Escaneo Trivy Filesystem (SAST + config)
+      uses: aquasecurity/trivy-action@v0.36.0
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        ignore-unfixed: true
+        severity: 'HIGH,CRITICAL'
+    # ----------------------------
+    #   Levantar PRODUCTO-SERVICE
+    # ----------------------------
+    - name: Iniciar producto-service
+      env:
+        SPRING_DATASOURCE_USERNAME: ${{ secrets.DB_USERNAME }}
+        SPRING_DATASOURCE_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      run: |
+        cd producto-service
+        nohup java -jar target/*.jar --server.port=8081 \
+          --spring.datasource.url=jdbc:postgresql://localhost:5433/productodb \
+          > ../logs/producto-service.log 2>&1 &
+    # ----------------------------
+    #   Levantar ORDEN-SERVICE
+    # ----------------------------
+    - name: Iniciar orden-service
+      env:
+        SPRING_DATASOURCE_USERNAME: ${{ secrets.DB_USERNAME }}
+        SPRING_DATASOURCE_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      run: |
+        cd orden-service
+        nohup java -jar target/*.jar --server.port=8082 \
+          --spring.datasource.url=jdbc:postgresql://localhost:5433/productodb \
+          > ../logs/orden-service.log 2>&1 &
+    - name: Esperar hasta que los servicios estén listos
+      run: sleep 25
+    - name: Ejecutadndo pruebas de integración (multi modulo)
+      env:
+        PRODUCTO_SERVICE_URL: http://localhost:8081
+        ORDEN_SERVICE_URL: http://localhost:8082
+      run: mvn -B test -pl producto-service,orden-service -am
+    # -----------------------------------
+    # Hardening: OPA/Confttest sobre los Dockerfiles
+    # -----------------------------------
+    - name: Instalando Conftest
+      run: |
+        curl -L https://github.com/open-policy-agent/conftest/releases/download/v0.69.0/conftest_0.69.0_Linux_x86_64.tar.gz \
+        | tar zx
+        sudo mv conftest /usr/local/bin/
+        conftest --version
+    - name: Validando politicas
+      run: |
+        conftest verify --policy policy
+    - name: Debug con parser output de Dockerfiles
+      run: |
+        echo "=== producto-service parseado ==="
+        conftest parse --parser dockerfile producto-service/Dockerfile
+        conftest parse --parser dockerfile orden-service/Dockerfile
+    - name: Check de politicas de seguridad (Dockerfile)
+      continue-on-error: true
+      run: |
+        conftest test --parser dockerfile producto-service/Dockerfile --output json
+        conftest test --parser dockerfile orden-service/Dockerfile --output json
+    
+    # -----------------------------------
+    # SBOM (Software Bill of Materias)
+    # -----------------------------------
+    - name: SBOM producto-service
+      uses: anchore/sbom-action@v0
+      with:
+        path: producto-service
+        format: cyclonedx-json
+        output-file: producto-sbom.json
+        upload-artifact: true
+    - name: Escaneo Snyk SBOM producto-service
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      run: snyk sbom test --experimental --file=producto-sbom.json -d || true
+    - name: SBOM orden-service
+      uses: anchore/sbom-action@v0
+      with:
+        path: orden-service
+        format: cyclonedx-json
+        output-file: orden-sbom.json
+        upload-artifact: true
+    - name: Escaneo Snyk SBOM orden-service
+      env:
+        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      run: snyk sbom test --experimental --file=orden-sbom.json -d || true
+    # -----------------------------------
+    # Integrando SBOM con Trivy y reportandolo como SARIF
+    # -----------------------------------
+    - name: Generar SBOM con Trivy (CycloneDX)
+      run: trivy fs . --format cyclonedx --output producto-sbom-1.json
+    - name: Trivy SBom -> SARIF 
+      run: trivy sbom producto-sbom-1.json --format sarif --output trivy-sbom-1.sarif
+    - name: Subiendolo con SARIF a Github security
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: trivy-sbom-1.sarif
+        category: producto-service
+    - name: Generar SBOM con Trivy (CycloneDX)
+      run: trivy fs . --format cyclonedx --output orden-sbom-1.json
+    - name: Trivy SBom -> SARIF 
+      run: trivy sbom orden-sbom-1.json --format sarif --output trivy-sbom-2.sarif
+    - name: Subiendolo con SARIF a Github security
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: trivy-sbom-2.sarif
+        category: orden-service
+    - name: Upload de SARIF como artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: archivos-sarif
+        path: "*.sarif"
+    # -----------------------------------
+    # Build de imagenes Docker
+    # -----------------------------------
+    - name: Build de imagenes
+      run: |
+        docker build -t producto-service-img --build-arg SERVICE_NAME=producto-service -f producto-service/Dockerfile .
+        docker build -t orden-service-img --build-arg SERVICE_NAME=orden-service -f orden-service/Dockerfile .
+    # -----------------------------------
+    # Escaneo de imagenes con Trivy
+    # -----------------------------------
+    - name: Escaneo con Trivy - producto-service
+      uses: aquasecurity/trivy-action@v0.36.0
+      with:
+        scan-type: image
+        image-ref: 'producto-service-img'
+        severity: 'HIGH,CRITICAL'
+        ignore-unfixed: true
+    - name: Escaneo con Trivy - orden-service
+      uses: aquasecurity/trivy-action@v0.36.0
+      with:
+        scan-type: image
+        image-ref: 'orden-service-img'
+        severity: 'HIGH,CRITICAL'
+        ignore-unfixed: true
+    - name: Cuando se encuentren vulnerabilidades HIGH o CRITICAL 
+      run: |
+        if grep -R "CRITICAL\|HIGH" trivy*; then
+          echo "Se detecttaron vulnerabilidades. El pipeline falla"
+          exit 1
+        fi || true
+    
+    - name: Trivy - escaneo IaC
+      uses: aquasecurity/trivy-action@v0.36.0
+      with:
+        scan-type: 'config'
+        scan-ref: '.'
+        security: 'HIGH,CRITICAL'
+    - name: Lint falco vi adocker
+      run: |
+        docker run --rm \
+        -v ${{ github.workspace }}/rules:/rules \
+        falcosecurity/falco:latest \
+        falco --list -r /rules/springboot-runtime.yaml
+    - name: Validando reglas Falco desde el yaml
+      run: |
+        docker run --rm \
+        -v ${{ github.workspace }}/rules:/rules \
+        falcosecurity/falco:latest \
+        falco --dry-run -r /rules/springboot-runtime.yaml

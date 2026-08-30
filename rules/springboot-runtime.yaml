@@ -1,0 +1,25 @@
+# Reglas Falco para microservicios Spring Boot
+# Macro para identificar contenedores (no host)
+- macro: container
+  condition: container.id != host
+
+- macro: spawned_process
+  condition: evt.type in (execve, execveat)
+
+# Listar procesos permitidos
+- list: pringboot_procesos_permitidos
+  items:
+    - java
+    - java.exe
+    - java.bin
+    - /usr/bin/java
+
+# regla 1: Detectar shell interactiva dentro del contenedor
+- rule: shell-dentro_contenedor
+  desc: Detecta la ejecucion de sh/bash dentro de un contenedor
+  condition: >
+    spawned_process and container and proc.name in (bash, sh, ash, zsh)
+  output: >
+    Shell detectada dentro del contenedor (proc=%proc.name user=%user.name container=%container.id image=%container.image)
+  priority: CRITICAL
+  tags: [container,process,security]

@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.1
+    container_name: filebeat
+    user: root
+    volumes:
+      - /home/cmunoz/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ../logs_cliente:/host-logs-cliente:ro
+      - ../logs_solicitud:/host-logs-solicitud:ro
+    depends_on:
+      - logstash
+    mem_limit: 128m
+    cpus: 0.25
+    networks:
+      - sbnet
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.1
+    container_name: logstash
+    ports:
+      - "5044:5044"
+      - "9600:9600"
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+    mem_limit: 512m
+    cpus: 0.25
+    environment:
+      - LS_JAVA_OPTS=-Xms512m -Xmx512m
+    networks:
+      - sbnet
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    mem_limit: 1g
+    ports:
+      - "9200:9200"
+    volumes:
+      - midata:/usr/share/elasticsearch/data
+    networks:
+      - sbnet
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.1
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    mem_limit: 512m
+    cpus: 0.25
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - NODE_OPTIONS=--max-old-space-size=512
+    networks:
+      - sbnet
+volumes:
+  midata:
+networks:
+  sbnet:
+    external: true

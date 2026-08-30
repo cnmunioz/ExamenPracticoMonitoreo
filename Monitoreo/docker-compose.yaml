@@ -1,0 +1,38 @@
+version: '3.7'
+services:
+  zipkin:
+    image: openzipkin/zipkin
+    ports:
+      - "9411:9411"
+    environment:
+      - JAVA_OPTS=-Xms128m -Xmx256m
+    mem_limit: 256m
+    cpus: 0.25
+    networks:
+      - sbnet
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    
+    mem_limit: 256m
+    cpus: 0.25
+    networks:
+      - sbnet
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    
+    mem_limit: 256m
+    cpus: 0.25
+    networks:
+      - sbnet
+networks:
+  sbnet:
+    external: true

@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+
+  eureka-api-gateway:
+    build:
+      context: .
+      dockerfile: eureka-api-gateway/Dockerfile
+      args:
+        SERVICE_NAME: eureka-api-gateway
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+      - JAVA_TOOL_OPTIONS=-Xms256m -Xmx384m
+    mem_limit: 512m
+    cpus: 0.25
+    networks:
+      - sbnet
+
+  servidor-config:
+    build:
+      context: .
+      dockerfile: servidor-config/Dockerfile
+      args:
+        SERVICE_NAME: servidor-config
+    ports:
+      - "8888:8888"
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+      - JAVA_TOOL_OPTIONS=-Xms256m -Xmx384m
+    mem_limit: 512m
+    cpus: 0.25
+    networks:
+      - sbnet
+
+  cliente-service:
+    build:
+      context: .
+      dockerfile: cliente-service/Dockerfile
+      args:
+        SERVICE_NAME: cliente-service
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JAVA_TOOL_OPTIONS=-Xms256m -Xmx384m
+    mem_limit: 512m
+    cpus: 0.25
+    depends_on:
+      - eureka-api-gateway
+      - servidor-config
+    volumes:
+      - ./logs_cliente:/app/logs_cliente
+    networks:
+      - sbnet
+
+  solicitud-service:
+    build:
+      context: .
+      dockerfile: solicitud-service/Dockerfile
+      args:
+        SERVICE_NAME: solicitud-service
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JAVA_TOOL_OPTIONS=-Xms256m -Xmx384m
+      - CLIENTE_SERVICE_URL=http://cliente-service:8080
+    mem_limit: 512m
+    cpus: 0.25
+    depends_on:
+      - eureka-api-gateway
+      - servidor-config
+      - cliente-service
+    volumes:
+      - ./logs_solicitud:/app/logs_solicitud
+    networks:
+      - sbnet
+
+networks:
+  sbnet:
+    external: true
