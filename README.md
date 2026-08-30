@@ -128,18 +128,18 @@ Esto permite demostrar tolerancia a fallos y recuperación automática.
 Evidencia:
 
 	Servicio cliente-service disponible
-	![Circuit Breaker - servicio disponible](docs/evidencias/circuit01.png)8
+	![Circui1 - servicio disponible](docs/evidencias/circuit01.png)8
 	
 	
 	Se da de baja el servicio
-	![Circuit Breaker - Baja de servicio](docs/evidencias/circuit02.png)
+	![Circuit2 - Baja de servicio](docs/evidencias/circuit02.png)
 
 
 	Se registra solicitud como PENDIENTE_VALIDACION
-	![Circuit Breaker - Pendiente](docs/evidencias/circuit03.png)
+	![Circuit3 - Pendiente](docs/evidencias/circuit03.png)
 	
 	Al levantar el servicio se cambia a REGISTRADA
-	![Circuit Breaker - Registrado](docs/evidencias/circuit04.png)
+	![Circuit4 - Registrado](docs/evidencias/circuit04.png)
 ---
 
 ## 7. Mensajería
@@ -264,7 +264,8 @@ solicitud-service = UP
 Métricas
 	![Prometheus - Metrics](docs/evidencias/prom02.png)
 	
-	![Prometheus - Metrics 2](docs/evidencias/prom03.png)
+	
+	![Prometheus - Metrics2](docs/evidencias/prom03.png)
 	
 ---
 
