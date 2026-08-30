@@ -259,12 +259,12 @@ cliente-service = UP
 
 solicitud-service = UP
 
-	![Eureka - Prometheus Targets](docs/evidencias/prom01.png)
+	![Prometheus - Targets](docs/evidencias/prom01.png)
 
 Métricas
-	![Eureka - Prometheus Targets](docs/evidencias/prom02.png)
+	![Prometheus - Metrics](docs/evidencias/prom02.png)
 	
-	![Eureka - Prometheus Targets](docs/evidencias/prom03.png)
+	![Prometheus - Metrics 2](docs/evidencias/prom03.png)
 	
 ---
 
