@@ -128,7 +128,7 @@ Esto permite demostrar tolerancia a fallos y recuperación automática.
 Evidencia:
 
 	Servicio cliente-service disponible
-	![Circui1 - servicio disponible](docs/evidencias/circuit01.png)8
+	![Circuit1 - servicio disponible](docs/evidencias/circuit01.png)
 	
 	
 	Se da de baja el servicio
@@ -258,13 +258,12 @@ mostrando:
 cliente-service = UP
 
 solicitud-service = UP
-
 	![Prometheus - Targets](docs/evidencias/prom01.png)
 
 Métricas
 	![Prometheus - Metrics](docs/evidencias/prom02.png)
 	
-	
+Métricas adicionales	
 	![Prometheus - Metrics2](docs/evidencias/prom03.png)
 	
 ---
