@@ -127,18 +127,18 @@ Esto permite demostrar tolerancia a fallos y recuperación automática.
 
 Evidencia:
 
-	Servicio cliente-service disponible
+Servicio cliente-service disponible
 	![Circuit1 - servicio disponible](docs/evidencias/circuit01.png)
 	
 	
-	Se da de baja el servicio
+Se da de baja el servicio
 	![Circuit2 - Baja de servicio](docs/evidencias/circuit02.png)
 
 
-	Se registra solicitud como PENDIENTE_VALIDACION
+Se registra solicitud como PENDIENTE_VALIDACION
 	![Circuit3 - Pendiente](docs/evidencias/circuit03.png)
 	
-	Al levantar el servicio se cambia a REGISTRADA
+Al levantar el servicio se cambia a REGISTRADA
 	![Circuit4 - Registrado](docs/evidencias/circuit04.png)
 ---
 
