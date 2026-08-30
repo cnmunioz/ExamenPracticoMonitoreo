@@ -86,6 +86,8 @@ Evidencia:
 
 Configuración de Eureka
 	![Eureka - Servicios registrados](docs/evidencias/eureka01.png)
+	
+	
 Dahsboard Eureka
 	![Eureka - Servicios registrados](docs/evidencias/eureka02.png)
 ---
@@ -108,7 +110,7 @@ Los microservicios pueden obtener configuración desde el servidor de configurac
 
 ## 6. Resiliencia - Circuit Breaker
 
-Se implementó Circuit Breaker con Resilience4j en solicitud-service.
+Se implementó Circuit Breaker con Resiliencia en solicitud-service.
 
 Caso probado:
 
@@ -125,8 +127,19 @@ Esto permite demostrar tolerancia a fallos y recuperación automática.
 
 Evidencia:
 
-Agregar captura de solicitud PENDIENTE_VALIDACION y posteriormente REGISTRADA.
+	Servicio cliente-service disponible
+	![Circuit Breaker - servicio disponible](docs/evidencias/circuit01.png)8
+	
+	
+	Se da de baja el servicio
+	![Circuit Breaker - Baja de servicio](docs/evidencias/circuit02.png)
 
+
+	Se registra solicitud como PENDIENTE_VALIDACION
+	![Circuit Breaker - Pendiente](docs/evidencias/circuit03.png)
+	
+	Al levantar el servicio se cambia a REGISTRADA
+	![Circuit Breaker - Registrado](docs/evidencias/circuit04.png)
 ---
 
 ## 7. Mensajería
@@ -202,6 +215,8 @@ También se verificó:
 - RabbitMQ
 - Discovery Client
 
+
+
 ---
 
 ## 9. Métricas con Prometheus
@@ -235,7 +250,6 @@ Ejemplos de métricas disponibles:
 
 Evidencia:
 
-Agregar captura de:
 
 Prometheus > Targets
 
@@ -245,6 +259,13 @@ cliente-service = UP
 
 solicitud-service = UP
 
+	![Eureka - Prometheus Targets](docs/evidencias/prom01.png)
+
+Métricas
+	![Eureka - Prometheus Targets](docs/evidencias/prom02.png)
+	
+	![Eureka - Prometheus Targets](docs/evidencias/prom03.png)
+	
 ---
 
 ## 10. Grafana
